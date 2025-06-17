@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.6.xsd">
+
+    <changeSet id="create-table-site" author="ElenaSitnik">
+        <createTable tableName="site">
+            <column name="id" type="int" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="status" type="enum('INDEXING', 'INDEXED', 'FAILED')"/>
+            <column name="status_time" type="datetime"/>
+            <column name="last_error" type="text"/>
+            <column name="url" type="varchar(255)"/>
+            <column name="name" type="varchar(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="create-table-page" author="ElenaSitnik">
+        <createTable tableName="page">
+            <column name="id" type="int" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="site_id" type="int">
+                <constraints foreignKeyName="page_site_id_with_site_id" references="site(id)" deleteCascade="true"/>
+            </column>
+            <column name="path" type="text">
+            </column>
+            <column name="code" type="int"/>
+            <column name="content" type="mediumtext"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="create-index-path" author="ElenaSitnik">
+        <createIndex tableName="page" indexName="index_page_path">
+        <column name="path(50)"/>
+    </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
