@@ -25,6 +25,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public IndexingResponse getStartIndexingResponse() {
+        Site siteModel = new Site();
         try{
             if (siteRepository.findByStatus(IndexingStatus.INDEXING.toString()).isPresent()) {
                 throw new RestartIndexingException("Индексация уже запущена");
@@ -35,7 +36,6 @@ public class IndexingServiceImpl implements IndexingService {
             searchengine.config.Site site;
             for (searchengine.config.Site s : sites) {
                 site = s;
-                Site siteModel = new Site();
 
                 Long siteId = siteRepository.findByUrl(site.getUrl()).orElseThrow().getId();
                 siteRepository.deleteById(siteId);
@@ -50,9 +50,15 @@ public class IndexingServiceImpl implements IndexingService {
                 siteLinks = new SiteLinks(site.getUrl(), siteModel, pageRepository, siteRepository);
                 siteLinks.compute();
                 siteModel.setStatus(IndexingStatus.INDEXED);
+                siteRepository.save(siteModel);
             }
             return new IndexingResponse(true);
         } catch (RestartIndexingException e) {
+            return new IndexingResponse(false, e.getMessage());
+        } catch (Exception e) {
+            siteModel.setStatus(IndexingStatus.FAILED);
+            siteModel.setLastError(e.getMessage());
+            siteRepository.save(siteModel);
             return new IndexingResponse(false, e.getMessage());
         }
     }
@@ -70,6 +76,7 @@ public class IndexingServiceImpl implements IndexingService {
             while(opt.isPresent()) {
                 Site site = opt.get();
                 site.setStatus(IndexingStatus.FAILED);
+                site.setLastError("Индексация остановлена пользователем");
                 siteRepository.save(site);
             }
 
