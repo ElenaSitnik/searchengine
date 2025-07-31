@@ -3,19 +3,16 @@ package searchengine.repositories;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
-import searchengine.model.PageModel;
+import searchengine.model.Page;
+import searchengine.model.Site;
+
+import java.util.Optional;
 
 @Repository
-public interface PageRepository extends JpaRepository<PageModel, Long> {
+public interface PageRepository extends JpaRepository<Page, Long> {
 
-    @Query(value = """
-            SELECT * FROM page WHERE path = ?1 AND site_id = ?2
-            """, nativeQuery = true)
-    PageModel findByPathAndSiteId(String path, Long siteId);
+    Optional<Page> findFirstByPathAndSite(String path, Site site);
 
-    @Query(value = """
-            DELETE FROM page WHERE site_id = ?1
-            """, nativeQuery = true)
     void deleteAllBySiteId(Long siteId);
 
 }

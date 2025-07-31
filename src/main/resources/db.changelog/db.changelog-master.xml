@@ -8,7 +8,7 @@
             <column name="id" type="int" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="status" type="enum('INDEXING', 'INDEXED', 'FAILED')"/>
+            <column name="status" type="varchar(255)"/>
             <column name="status_time" type="datetime"/>
             <column name="last_error" type="text"/>
             <column name="url" type="varchar(255)"/>
@@ -31,7 +31,7 @@
     </changeSet>
     <changeSet id="create-index-path" author="ElenaSitnik">
         <createIndex tableName="page" indexName="index_page_path">
-        <column name="path(50)"/>
+        <column name="path"/>
     </createIndex>
     </changeSet>
 

@@ -4,13 +4,15 @@ server:
 spring:
   datasource:
     username: root
-    password: chicago2886_KRinge
-    url: jdbc:mysql://localhost:3306/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true
+    password: search_587-Engine
+    url: jdbc:postgresql://localhost:5432/search_engine
   jpa:
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
-        ddl-auto: update
+        temp:
+          use_jdbc_metadata_defaults: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        ddl-auto: validate
         show-sql: true
   liquibase:
     change-log: classpath:/db.changelog/db.changelog-master.xml

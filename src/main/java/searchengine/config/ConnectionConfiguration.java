@@ -1,4 +1,4 @@
-package searchengine.services.indexing.config;
+package searchengine.config;
 
 import lombok.Getter;
 import lombok.Setter;
