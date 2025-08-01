@@ -5,4 +5,6 @@ import searchengine.dto.indexing.IndexingResponse;
 public interface IndexingService {
     IndexingResponse getStartIndexingResponse();
     IndexingResponse getStopIndexingResponse();
+
+    IndexingResponse getIndexingPageResponse(String url);
 }

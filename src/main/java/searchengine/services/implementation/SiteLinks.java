@@ -1,5 +1,6 @@
 package searchengine.services.implementation;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -22,16 +23,14 @@ import java.util.function.Function;
 
 @RequiredArgsConstructor
 public class SiteLinks extends RecursiveAction {
+
+    @Getter
     private final String url;
     private final Site siteModel;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
     private ArrayList<String> links = new ArrayList<>();
     private ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration();
-
-    public String getUrl() {
-        return url;
-    }
 
     @Override
     protected void compute() {
@@ -59,19 +58,7 @@ public class SiteLinks extends RecursiveAction {
     }
 
     private void linkExtraction(String url) {
-        String html;
-        try {
-            html = String.valueOf(Jsoup.connect(url)
-                    .userAgent(connectionConfiguration.getUser())
-                    .header("Accept", "text/html")
-                    .header("Accept-Language", "en")
-                    .referrer(connectionConfiguration.getReferrer())
-                    .header("Connecting", "keep-alive")
-                    .ignoreHttpErrors(true).ignoreContentType(true).followRedirects(true)
-                    .get());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        String html = getHtmlCode(url);
         Document document = Jsoup.parse(html, url);
         Elements elements = document.select("a[href]");
         for (Element element : elements) {
@@ -84,6 +71,21 @@ public class SiteLinks extends RecursiveAction {
                 }
                 pageRepository.save(page);
             }
+        }
+    }
+
+    public String getHtmlCode(String url) {
+        try {
+            return String.valueOf(Jsoup.connect(url)
+                    .userAgent(connectionConfiguration.getUser())
+                    .header("Accept", "text/html")
+                    .header("Accept-Language", "en")
+                    .referrer(connectionConfiguration.getReferrer())
+                    .header("Connecting", "keep-alive")
+                    .ignoreHttpErrors(true).ignoreContentType(true).followRedirects(true)
+                    .get());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
