@@ -5,14 +5,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
-import java.util.List;
 
 @Entity
 @NoArgsConstructor
 @Getter
 @Setter
-@Table(name = "page")
-public class Page {
+@Table(name = "lemma")
+public class Lemma {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,17 +22,9 @@ public class Page {
     @JoinColumn(name = "site_id", referencedColumnName = "id")
     private Site site;
 
-    @Column(name = "path")
-    private String path;
+    @Column(name = "lemma")
+    private String lemma;
 
-    @Column(name = "code")
-    private int code;
-
-    @Column(name = "content")
-    private String content;
-
-    @OneToMany
-    @JoinColumn(name = "page_id")
-    private List<Index> indexesList;
-
+    @Column(name = "frequency")
+    private Integer frequency;
 }

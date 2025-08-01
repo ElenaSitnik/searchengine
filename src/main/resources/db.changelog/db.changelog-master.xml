@@ -32,7 +32,33 @@
     <changeSet id="create-index-path" author="ElenaSitnik">
         <createIndex tableName="page" indexName="index_page_path">
         <column name="path"/>
-    </createIndex>
+        </createIndex>
+    </changeSet>
+    <changeSet id="create-table-lemma" author="ElenaSitnik">
+        <createTable tableName="lemma">
+            <column name="id" type="int" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="site_id" type="int">
+                <constraints foreignKeyName="lemma_site_id_with_site_id" references="site(id)" deleteCascade="true"/>
+            </column>
+            <column name="lemma" type="varchar(255)"/>
+            <column name="frequency" type="int"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="create-table-index" author="ElenaSitnik">
+        <createTable tableName="index">
+            <column name="id" type="int" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="page_id" type="int">
+                <constraints foreignKeyName="index_page_id_with_page_id" references="page(id)" deleteCascade="true"/>
+            </column>
+            <column name="lemma_id" type="int">
+                <constraints foreignKeyName="index_lemma_id_with_lemma_id" references="lemma(id)" deleteCascade="true"/>
+            </column>
+            <column name="rank" type="float"/>
+        </createTable>
     </changeSet>
 
 </databaseChangeLog>
