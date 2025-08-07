@@ -27,5 +27,5 @@ public class Index {
     private Lemma lemma;
 
     @Column(name = "rank")
-    private Integer rank;
+    private Float rank;
 }

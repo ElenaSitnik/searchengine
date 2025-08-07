@@ -39,14 +39,4 @@ public class ApiController {
         return indexingService.getIndexingPageResponse(url);
     }
 
-    //    @GetMapping("/startIndexing")
-//    public ResponseEntity<IndexingResponse> indexing() {
-//
-//        return ResponseEntity.ok(indexingService.getIndexingResponse());
-//    }
-
-//    @GetMapping("/stopIndexing")
-//    public ResponseEntity<IndexingResponse> stopIndexing() {
-//        return ResponseEntity.ok(indexingService.getIndexingResponse());
-//    }
 }

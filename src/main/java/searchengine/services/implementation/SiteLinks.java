@@ -74,13 +74,15 @@ public class SiteLinks extends RecursiveAction {
         }
     }
 
-    public String getHtmlCode(String url) {
+    public static String getHtmlCode(String url) {
         try {
             return String.valueOf(Jsoup.connect(url)
-                    .userAgent(connectionConfiguration.getUser())
+                    //.userAgent(connectionConfiguration.getUserAgent())
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36")
                     .header("Accept", "text/html")
                     .header("Accept-Language", "en")
-                    .referrer(connectionConfiguration.getReferrer())
+                    //.referrer(connectionConfiguration.getReferrer())
+                    .referrer("http://www.google.com")
                     .header("Connecting", "keep-alive")
                     .ignoreHttpErrors(true).ignoreContentType(true).followRedirects(true)
                     .get());
@@ -95,14 +97,14 @@ public class SiteLinks extends RecursiveAction {
         if (link.startsWith(url) && !link.contains(".pdf") && !link.contains(".jpg")
                 && !link.contains(".doc") && !link.contains("#") && !link.contains("?")) {
 
-            int pathStart = link.indexOf(siteModel.getUrl()) + siteModel.getUrl().length() - 1;
+            int pathStart = link.indexOf(siteModel.getUrl()) + siteModel.getUrl().length();
             String path = link.substring(pathStart).strip();
             Site site = siteRepository.findByUrl(siteModel.getUrl()).orElseThrow();
-            page = pageRepository.findFirstByPathAndSite(path, site).orElseThrow();
+            //page = pageRepository.findFirstByPathAndSite(path, site).get();
 
             if (path.length() > 1) {
                 page = new Page();
-                page.setSite(siteRepository.findById(site.getId()).orElseThrow());
+                page.setSite(site);
                 page.setPath(path);
                 page.setCode(200); //временно
             }

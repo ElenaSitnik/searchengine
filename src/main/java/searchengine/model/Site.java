@@ -7,6 +7,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -15,19 +16,6 @@ import java.util.List;
 @Setter
 @Table(name = "site")
 public class Site {
-
-    public Site (Long id, IndexingStatus status, LocalDateTime statusTime, String lastError, String url, String name) {
-        this.id = id;
-        this.status = status;
-        this.statusTime = statusTime;
-        this.lastError = lastError;
-        this.url = url;
-        this.name = name;
-    }
-
-    public Site (Long id, String status, LocalDateTime statusTime, String lastError, String url, String name) {
-        this(id, IndexingStatus.valueOf(status), statusTime, lastError, url, name);
-    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -53,6 +41,6 @@ public class Site {
 
     @OneToMany
     @JoinColumn(name = "site_id")
-    private List<Page> pages;
+    private List<Page> pages = new ArrayList<>();
 
 }

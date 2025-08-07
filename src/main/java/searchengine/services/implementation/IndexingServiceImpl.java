@@ -3,6 +3,7 @@ package searchengine.services.implementation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import searchengine.config.SitesList;
+import searchengine.customExeptions.PageIndexingException;
 import searchengine.customExeptions.RestartIndexingException;
 import searchengine.customExeptions.StopIndexingException;
 import searchengine.dto.indexing.IndexingResponse;
@@ -14,7 +15,10 @@ import searchengine.repositories.SiteRepository;
 import searchengine.services.intarfaces.IndexingService;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,19 +36,29 @@ public class IndexingServiceImpl implements IndexingService {
     public IndexingResponse getStartIndexingResponse() {
         Site siteModel = new Site();
         try{
-            if (siteRepository.findByStatus(IndexingStatus.INDEXING.toString()).isPresent()) {
+            if (siteRepository.findByStatus(IndexingStatus.INDEXING).isPresent()) {
                 throw new RestartIndexingException("Индексация уже запущена");
             }
 
-            SitesList siteList = new SitesList();
-            List<searchengine.config.Site> sites = siteList.getSites();
+//            SitesList sitesList = new SitesList();
+//            List<searchengine.config.Site> sites = new ArrayList<>(sitesList.getSites());
+            List<searchengine.config.Site> sites = new ArrayList<>();
+            searchengine.config.Site site1 = new searchengine.config.Site();
+            site1.setName("Светловка");
+            site1.setUrl("https://www.svetlovka.ru");
+            sites.add(site1);
+            site1.setName("name: PlayBack.Ru");
+            site1.setUrl("https://www.playback.ru");
+            sites.add(site1);
             searchengine.config.Site site;
             for (searchengine.config.Site s : sites) {
                 site = s;
-
-                Long siteId = siteRepository.findByUrl(site.getUrl()).orElseThrow().getId();
-                siteRepository.deleteById(siteId);
-                pageRepository.deleteAllBySiteId(siteId);
+                Optional<Site> siteFromDB = siteRepository.findByUrl(site.getUrl());
+                if (siteFromDB.isPresent()) {
+                    Long siteId = siteFromDB.get().getId();
+                    siteRepository.deleteById(siteId);
+                    pageRepository.deleteAllBySiteId(siteId);
+                }
 
                 siteModel.setName(site.getName());
                 siteModel.setUrl(site.getUrl());
@@ -52,9 +66,10 @@ public class IndexingServiceImpl implements IndexingService {
                 siteModel.setStatusTime(LocalDateTime.now());
                 siteRepository.save(siteModel);
 
-                siteLinks = new SiteLinks(site.getUrl(), siteModel, pageRepository, siteRepository);
+                siteLinks = new SiteLinks(siteModel.getUrl(), siteModel, pageRepository, siteRepository);
                 siteLinks.compute();
                 siteModel.setStatus(IndexingStatus.INDEXED);
+                siteModel.setId(siteRepository.findByUrl(siteModel.getUrl()).get().getId());
                 siteRepository.save(siteModel);
             }
             return new IndexingResponse(true);
@@ -71,30 +86,31 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     public IndexingResponse getStopIndexingResponse() {
         try{
-            siteRepository.findByStatus(IndexingStatus.INDEXING.toString()).orElseThrow(
+            siteRepository.findByStatus(IndexingStatus.INDEXING).orElseThrow(
                     () -> new StopIndexingException("Индексация не запущена")
             );
 
             siteLinks.stopIndexing();
-            Optional<Site> opt = siteRepository.findByStatus(IndexingStatus.INDEXING.toString());
+            Optional<Site> opt = siteRepository.findByStatus(IndexingStatus.INDEXING);
 
             while(opt.isPresent()) {
                 Site site = opt.get();
                 site.setStatus(IndexingStatus.FAILED);
                 site.setLastError("Индексация остановлена пользователем");
                 siteRepository.save(site);
+                opt = siteRepository.findByStatus(IndexingStatus.INDEXING);
             }
 
             return new IndexingResponse(true);
         } catch (StopIndexingException e) {
             return new IndexingResponse(false, e.getMessage());
         }
-
     }
 
     @Override
-    public IndexingResponse getIndexingPageResponse(String url) {
-        PageIndexing pageIndexing = new PageIndexing();
+    public IndexingResponse getIndexingPageResponse(String pageUrl) {
+        String url = PageIndexing.getDecodedUrl(pageUrl);
+
         LemmasMaker lemmasMaker;
         try{
             lemmasMaker = LemmasMaker.getInstance();
@@ -102,15 +118,16 @@ public class IndexingServiceImpl implements IndexingService {
             return new IndexingResponse(false, e.getMessage());
         }
         Site site;
-        String siteUrl = pageIndexing.getSiteUrl(url);
+        String siteUrl = PageIndexing.getSiteUrl(url);
         Optional<Site> siteOptional = siteRepository.findByUrl(siteUrl);
+
         if (siteOptional.isEmpty()) {
             return new IndexingResponse(false, "Данная страница находится за пределами сайтов, \n" +
                     "указанных в конфигурационном файле");
         } else {
             site = siteOptional.get();
         }
-        String html = siteLinks.getHtmlCode(url);
+        String html = SiteLinks.getHtmlCode(url);
         String path = url.substring(siteUrl.length());
         Page page = savePage(site, html, path);
 
@@ -154,11 +171,12 @@ public class IndexingServiceImpl implements IndexingService {
         return lemma;
     }
 
-    private void saveIndex(Page page, Lemma lemma, Integer frequency) {
+    private void saveIndex(Page page, Lemma lemma, Integer count) {
         Index index = new Index();
         index.setLemma(lemma);
         index.setPage(page);
-        index.setRank(frequency);
+        Float rank = (float) count / lemma.getFrequency();
+        index.setRank(rank);
         indexRepository.save(index);
     }
 }

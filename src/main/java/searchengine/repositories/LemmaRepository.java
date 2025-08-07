@@ -9,5 +9,4 @@ public interface LemmaRepository extends JpaRepository<Lemma, Long> {
     Optional<Lemma> findByLemma(String lemma);
 
 
-
 }
