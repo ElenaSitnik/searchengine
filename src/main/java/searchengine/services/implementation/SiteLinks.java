@@ -6,110 +6,85 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
-import searchengine.config.ConnectionConfiguration;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveAction;
-import java.util.function.Function;
 
 @RequiredArgsConstructor
 public class SiteLinks extends RecursiveAction {
 
     @Getter
     private final String url;
-    private final Site siteModel;
+    private final Site site;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
-    private ArrayList<String> links = new ArrayList<>();
-    private ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration();
+
 
     @Override
     protected void compute() {
+        if (Thread.currentThread().isInterrupted()) {
+            return;
+        }
         linkExtraction(url);
-        if (!links.isEmpty()) {
+        if (site.getCounter().get() < site.getLinks().size()) {
             List<SiteLinks> tasks = new ArrayList<>();
-            for (String link : links) {
-                try {
-                    Thread.sleep(5000);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+            synchronized (site) {
+                while (site.getCounter().get() < site.getLinks().size()) {
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    String link = site.getLinks().get(site.getCounter().get());
+                    site.getCounter().incrementAndGet();
+                    SiteLinks siteLinks = new SiteLinks(link, site, pageRepository, siteRepository);
+                    siteLinks.fork();
+                    tasks.add(siteLinks);
+
+                    site.setStatusTime(LocalDateTime.now());
+                    siteRepository.save(site);
                 }
-                SiteLinks siteLinks = new SiteLinks(link, siteModel, pageRepository, siteRepository);
-                siteLinks.fork();
-                tasks.add(siteLinks);
-                siteModel.setStatusTime(LocalDateTime.now());
-                siteRepository.save(siteModel);
             }
             tasks.forEach(ForkJoinTask::join);
         }
     }
 
-    public void stopIndexing() {
-        Function<ForkJoinPool, List<Runnable>> fjpListRunnable = ForkJoinPool::shutdownNow;
-    }
-
     private void linkExtraction(String url) {
-        String html = getHtmlCode(url);
+        String html = HtmlCodeExtractor.getHtmlCode(url);
         Document document = Jsoup.parse(html, url);
         Elements elements = document.select("a[href]");
         for (Element element : elements) {
             String link = element.absUrl("href");
-            Page page = checkingPage(link);
-            if (page != null) {
-                page.setContent(html);
-                synchronized (siteModel) {
-                    siteModel.getPages().add(page);
-                }
-                pageRepository.save(page);
+            String path = checkingPage(link);
+            if (!path.isEmpty()) {
+                Site siteFromDB = siteRepository.findByUrl(site.getUrl()).orElseThrow();
+                SavePage savePage = new SavePage(pageRepository);
+                savePage.savePageToDatabase(path, html, siteFromDB);
             }
         }
     }
 
-    public static String getHtmlCode(String url) {
-        try {
-            return String.valueOf(Jsoup.connect(url)
-                    //.userAgent(connectionConfiguration.getUserAgent())
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36")
-                    .header("Accept", "text/html")
-                    .header("Accept-Language", "en")
-                    //.referrer(connectionConfiguration.getReferrer())
-                    .referrer("http://www.google.com")
-                    .header("Connecting", "keep-alive")
-                    .ignoreHttpErrors(true).ignoreContentType(true).followRedirects(true)
-                    .get());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private Page checkingPage(String link) {
-        Page page = null;
-
+    private String checkingPage(String link) {
         if (link.startsWith(url) && !link.contains(".pdf") && !link.contains(".jpg")
                 && !link.contains(".doc") && !link.contains("#") && !link.contains("?")) {
 
-            int pathStart = link.indexOf(siteModel.getUrl()) + siteModel.getUrl().length();
+            int pathStart = link.indexOf(site.getUrl()) + site.getUrl().length();
             String path = link.substring(pathStart).strip();
-            Site site = siteRepository.findByUrl(siteModel.getUrl()).orElseThrow();
-            //page = pageRepository.findFirstByPathAndSite(path, site).get();
-
-            if (path.length() > 1) {
-                page = new Page();
-                page.setSite(site);
-                page.setPath(path);
-                page.setCode(200); //временно
+            synchronized (site) {
+                if (!site.getLinks().contains(link) && path.length() > 1) {
+                    site.getLinks().add(link);
+                    return path;
+                }
             }
         }
-        return page;
+        return "";
     }
 
 }

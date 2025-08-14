@@ -8,7 +8,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Entity
 @NoArgsConstructor
@@ -42,5 +44,8 @@ public class Site {
     @OneToMany
     @JoinColumn(name = "site_id")
     private List<Page> pages = new ArrayList<>();
+
+    private transient volatile List<String> links = new ArrayList<>();
+    private transient AtomicInteger counter = new AtomicInteger(0);
 
 }

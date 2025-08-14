@@ -21,12 +21,12 @@ spring:
 
 indexing-settings:
   sites:
-  - url: https://www.svetlovka.ru
-    name: Светловка
-  - url: https://ipfran.ru
-    name: ИПФ РАН
-  - url: https://www.playback.ru
-    name: PlayBack.Ru
+    - url: https://www.svetlovka.ru
+      name: Светловка
+    - url: https://ipfran.ru
+      name: ИПФ РАН
+    - url: https://www.playback.ru
+      name: PlayBack.Ru
 
 connection-configuration:
   userAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36

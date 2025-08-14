@@ -15,13 +15,14 @@ import searchengine.repositories.SiteRepository;
 import searchengine.services.intarfaces.IndexingService;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ForkJoinPool;
 
 @Service
 @RequiredArgsConstructor
@@ -34,51 +35,61 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public IndexingResponse getStartIndexingResponse() {
-        Site siteModel = new Site();
+        Site site = null;
         try{
             if (siteRepository.findByStatus(IndexingStatus.INDEXING).isPresent()) {
                 throw new RestartIndexingException("Индексация уже запущена");
             }
 
 //            SitesList sitesList = new SitesList();
+//            System.out.println("we are here");
 //            List<searchengine.config.Site> sites = new ArrayList<>(sitesList.getSites());
+//            System.out.println(sites.size());
             List<searchengine.config.Site> sites = new ArrayList<>();
+
+            searchengine.config.Site site2 = new searchengine.config.Site();
+            site2.setName("name: PlayBack.Ru");
+            site2.setUrl("https://www.playback.ru");
+            sites.add(site2);
+
             searchengine.config.Site site1 = new searchengine.config.Site();
             site1.setName("Светловка");
             site1.setUrl("https://www.svetlovka.ru");
             sites.add(site1);
-            site1.setName("name: PlayBack.Ru");
-            site1.setUrl("https://www.playback.ru");
-            sites.add(site1);
-            searchengine.config.Site site;
+
+            searchengine.config.Site configSite;
             for (searchengine.config.Site s : sites) {
-                site = s;
-                Optional<Site> siteFromDB = siteRepository.findByUrl(site.getUrl());
+                configSite = s;
+                Optional<Site> siteFromDB = siteRepository.findByUrl(configSite.getUrl());
                 if (siteFromDB.isPresent()) {
                     Long siteId = siteFromDB.get().getId();
-                    siteRepository.deleteById(siteId);
                     pageRepository.deleteAllBySiteId(siteId);
+                    siteRepository.deleteById(siteId);
                 }
+                site = new Site();
+                site.setName(configSite.getName());
+                site.setUrl(configSite.getUrl());
+                site.setStatus(IndexingStatus.INDEXING);
+                site.setStatusTime(LocalDateTime.now());
+                site.setLastError("");
+                siteRepository.save(site);
+                site.setId(siteRepository.findByUrl(site.getUrl()).get().getId());
 
-                siteModel.setName(site.getName());
-                siteModel.setUrl(site.getUrl());
-                siteModel.setStatus(IndexingStatus.INDEXING);
-                siteModel.setStatusTime(LocalDateTime.now());
-                siteRepository.save(siteModel);
-
-                siteLinks = new SiteLinks(siteModel.getUrl(), siteModel, pageRepository, siteRepository);
+                siteLinks = new SiteLinks(site.getUrl(), site, pageRepository, siteRepository);
                 siteLinks.compute();
-                siteModel.setStatus(IndexingStatus.INDEXED);
-                siteModel.setId(siteRepository.findByUrl(siteModel.getUrl()).get().getId());
-                siteRepository.save(siteModel);
+                site.setStatus(IndexingStatus.INDEXED);
+                site.setId(siteRepository.findByUrl(site.getUrl()).get().getId());
+                siteRepository.save(site);
             }
             return new IndexingResponse(true);
         } catch (RestartIndexingException e) {
             return new IndexingResponse(false, e.getMessage());
         } catch (Exception e) {
-            siteModel.setStatus(IndexingStatus.FAILED);
-            siteModel.setLastError(e.getMessage());
-            siteRepository.save(siteModel);
+            site = siteRepository.findByUrl(site.getUrl()).get();
+            site.setStatus(IndexingStatus.FAILED);
+            site.setLastError(e.getMessage());
+            site.setId(siteRepository.findByUrl(site.getUrl()).get().getId());
+            siteRepository.save(site);
             return new IndexingResponse(false, e.getMessage());
         }
     }
@@ -89,16 +100,17 @@ public class IndexingServiceImpl implements IndexingService {
             siteRepository.findByStatus(IndexingStatus.INDEXING).orElseThrow(
                     () -> new StopIndexingException("Индексация не запущена")
             );
+            ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
+            forkJoinPool.shutdownNow();
 
-            siteLinks.stopIndexing();
-            Optional<Site> opt = siteRepository.findByStatus(IndexingStatus.INDEXING);
+            Optional<Site> optionalSite = siteRepository.findByStatus(IndexingStatus.INDEXING);
 
-            while(opt.isPresent()) {
-                Site site = opt.get();
+            while(optionalSite.isPresent()) {
+                Site site = optionalSite.get();
                 site.setStatus(IndexingStatus.FAILED);
                 site.setLastError("Индексация остановлена пользователем");
                 siteRepository.save(site);
-                opt = siteRepository.findByStatus(IndexingStatus.INDEXING);
+                optionalSite = siteRepository.findByStatus(IndexingStatus.INDEXING);
             }
 
             return new IndexingResponse(true);
@@ -109,27 +121,32 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public IndexingResponse getIndexingPageResponse(String pageUrl) {
-        String url = PageIndexing.getDecodedUrl(pageUrl);
-
+        String url = (URLDecoder.decode(pageUrl, StandardCharsets.UTF_8)).substring(4);
         LemmasMaker lemmasMaker;
+
         try{
             lemmasMaker = LemmasMaker.getInstance();
         } catch (IOException e) {
             return new IndexingResponse(false, e.getMessage());
         }
         Site site;
-        String siteUrl = PageIndexing.getSiteUrl(url);
+        String siteUrl = PageUrlConverter.getSiteUrlFromPageUrl(url);
         Optional<Site> siteOptional = siteRepository.findByUrl(siteUrl);
 
-        if (siteOptional.isEmpty()) {
-            return new IndexingResponse(false, "Данная страница находится за пределами сайтов, \n" +
-                    "указанных в конфигурационном файле");
-        } else {
-            site = siteOptional.get();
+        try {
+            site = siteOptional.orElseThrow(
+                    () -> new PageIndexingException("Данная страница находится за пределами сайтов, \n" +
+                            "указанных в конфигурационном файле")
+            );
+        } catch (PageIndexingException e) {
+            return new IndexingResponse(false, e.getMessage());
         }
-        String html = SiteLinks.getHtmlCode(url);
+        String html = HtmlCodeExtractor.getHtmlCode(url);
         String path = url.substring(siteUrl.length());
-        Page page = savePage(site, html, path);
+        Long pageId = pageRepository.findFirstByPathAndSite(path, site).get().getId();
+        pageRepository.deleteById(pageId);
+        SavePage savePage = new SavePage(pageRepository);
+        Page page = savePage.savePageToDatabase(path, html, site);
 
         Map<String, Integer> lemmasMap = lemmasMaker.collectLemmas(html);
         for (Map.Entry<String, Integer> entry : lemmasMap.entrySet()) {
@@ -139,18 +156,6 @@ public class IndexingServiceImpl implements IndexingService {
             saveIndex(page, lemma, value);
         }
         return new IndexingResponse(true);
-    }
-
-    private Page savePage(Site site, String html, String path) {
-        Page page = new Page();
-        page.setSite(site);
-        page.setCode(200);
-        page.setContent(html);
-        page.setPath(path);
-
-        pageRepository.deleteByPath(path);
-        pageRepository.save(page);
-        return page;
     }
 
     private Lemma saveLemma(Site site, String key) {
