@@ -1,4 +1,4 @@
-package searchengine.services.implementation;
+package searchengine.dto.indexing;
 
 import org.jsoup.Jsoup;
 import searchengine.config.ConnectionConfiguration;

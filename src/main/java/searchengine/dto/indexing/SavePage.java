@@ -1,4 +1,4 @@
-package searchengine.services.implementation;
+package searchengine.dto.indexing;
 
 import lombok.RequiredArgsConstructor;
 import searchengine.model.Page;
@@ -20,7 +20,6 @@ public class SavePage {
             page.setContent(html);
             page.setSite(siteFromDB);
             page.setCode(200);
-
             pageRepository.save(page);
         }
         return page;

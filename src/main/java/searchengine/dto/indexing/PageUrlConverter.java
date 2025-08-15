@@ -1,4 +1,4 @@
-package searchengine.services.implementation;
+package searchengine.dto.indexing;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

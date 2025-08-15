@@ -1,4 +1,4 @@
-package searchengine.services.implementation;
+package searchengine.dto.indexing;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -6,7 +6,10 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import searchengine.model.Page;
 import searchengine.model.Site;
+import searchengine.repositories.IndexRepository;
+import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 
@@ -24,6 +27,8 @@ public class SiteLinks extends RecursiveAction {
     private final Site site;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
+    private final LemmaRepository lemmaRepository;
+    private final IndexRepository indexRepository;
 
 
     @Override
@@ -44,7 +49,7 @@ public class SiteLinks extends RecursiveAction {
 
                     String link = site.getLinks().get(site.getCounter().get());
                     site.getCounter().incrementAndGet();
-                    SiteLinks siteLinks = new SiteLinks(link, site, pageRepository, siteRepository);
+                    SiteLinks siteLinks = new SiteLinks(link, site, pageRepository, siteRepository, lemmaRepository, indexRepository);
                     siteLinks.fork();
                     tasks.add(siteLinks);
 
@@ -67,6 +72,9 @@ public class SiteLinks extends RecursiveAction {
                 Site siteFromDB = siteRepository.findByUrl(site.getUrl()).orElseThrow();
                 SavePage savePage = new SavePage(pageRepository);
                 savePage.savePageToDatabase(path, html, siteFromDB);
+                Page pageFromDB = pageRepository.findFirstByPathAndSite(path, site).get();
+                PageIndexing pageIndexing = new PageIndexing(lemmaRepository, indexRepository);
+                pageIndexing.indexingPage(site, pageFromDB, html);
             }
         }
     }
