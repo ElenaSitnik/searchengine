@@ -5,6 +5,7 @@ import org.springframework.stereotype.Repository;
 import searchengine.model.Page;
 import searchengine.model.Site;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -14,6 +15,6 @@ public interface PageRepository extends JpaRepository<Page, Long> {
 
     void deleteAllBySiteId(Long siteId);
 
-    void deleteByPath(String path);
+    List<Page> findAllBySiteId(Long siteId);
 
 }

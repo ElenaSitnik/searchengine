@@ -1,22 +1,25 @@
 package searchengine.dto.indexing;
 
+import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
+import org.springframework.stereotype.Component;
 import searchengine.config.ConnectionConfiguration;
 
 import java.io.IOException;
 
+@Component
+@RequiredArgsConstructor
 public class HtmlCodeExtractor {
-    private static final ConnectionConfiguration CONNECTION_CONFIGURATION = new ConnectionConfiguration();
 
-    public static String getHtmlCode(String url) {
+    private final ConnectionConfiguration CONNECTION_CONFIGURATION;
+
+    public String getHtml(String url) {
         try {
             return String.valueOf(Jsoup.connect(url)
-                    //.userAgent(CONNECTION_CONFIGURATION.getUserAgent())
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36")
+                    .userAgent(CONNECTION_CONFIGURATION.getUserAgent())
                     .header("Accept", "text/html")
                     .header("Accept-Language", "en")
-                    //.referrer(CONNECTION_CONFIGURATION.getReferrer())
-                    .referrer("http://www.google.com")
+                    .referrer(CONNECTION_CONFIGURATION.getReferrer())
                     .header("Connecting", "keep-alive")
                     .ignoreHttpErrors(true).ignoreContentType(true).followRedirects(true)
                     .get());
