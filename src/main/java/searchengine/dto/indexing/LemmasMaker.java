@@ -1,5 +1,6 @@
 package searchengine.dto.indexing;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
 
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+@Slf4j
 public class LemmasMaker {
 
     private final LuceneMorphology luceneMorphology;
@@ -28,7 +30,7 @@ public class LemmasMaker {
     }
 
     public Map<String, Integer> collectLemmas(String text) {
-        String[] words = arrayContainsRussianWords(getTextWithoutTags(text));
+        String[] words = arrayContainsRussianWords(text);
         HashMap<String, Integer> lemmas = new HashMap<>();
 
         for (String word : words) {
@@ -76,24 +78,6 @@ public class LemmasMaker {
                 .replaceAll("([^а-я\\s])", " ")
                 .trim()
                 .split("\\s+");
-    }
-
-    private String getTextWithoutTags(String text) {
-        String cleanText = "";
-        int start;
-        int end;
-        for (int i = 0; i < text.length(); ) {
-            start = text.indexOf(">", i);
-            end = text.indexOf("<", start);
-            if (start < 0 || end < 0) {
-                return cleanText;
-            }
-            if (end - start >= 2) {
-                cleanText = cleanText.concat(text.substring(start + 1, end));
-            }
-            i = end + 1;
-        }
-        return cleanText;
     }
 
 }

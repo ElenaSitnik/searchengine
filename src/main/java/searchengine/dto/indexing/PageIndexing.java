@@ -20,7 +20,7 @@ public class PageIndexing {
     public String indexingPage(Site site, Page page, String html) {
         try{
             LemmasMaker lemmasMaker = LemmasMaker.getInstance();
-            Map<String, Integer> lemmasMap = lemmasMaker.collectLemmas(html);
+            Map<String, Integer> lemmasMap = lemmasMaker.collectLemmas(getTextWithoutTags(html));
             for (Map.Entry<String, Integer> entry : lemmasMap.entrySet()) {
                 String key = entry.getKey();
                 Integer value = entry.getValue();
@@ -32,6 +32,24 @@ public class PageIndexing {
         }
         return "";
 
+    }
+
+    private String getTextWithoutTags(String text) {
+        String cleanText = "";
+        int start;
+        int end;
+        for (int i = 0; i < text.length(); ) {
+            start = text.indexOf(">", i);
+            end = text.indexOf("<", start);
+            if (start < 0 || end < 0) {
+                return cleanText;
+            }
+            if (end - start >= 2) {
+                cleanText = cleanText.concat(text.substring(start + 1, end));
+            }
+            i = end + 1;
+        }
+        return cleanText;
     }
 
     private Lemma saveLemma(Site site, String key) {

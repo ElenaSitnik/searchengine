@@ -34,13 +34,13 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public IndexingResponse getStartIndexingResponse() {
-        try(ForkJoinPool forkJoinPool = ForkJoinPool.commonPool()) {
+        try{
             if (siteRepository.findByStatus(IndexingStatus.INDEXING).isPresent()) {
                 throw new RestartIndexingException("Индексация уже запущена");
             }
             SiteIndexing indexing = new SiteIndexing(pageRepository, siteRepository, lemmaRepository, indexRepository,
                     extractor, sitesList);
-
+            ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
             forkJoinPool.execute(indexing);
             log.info("Запущена индексация");
 
@@ -53,10 +53,11 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public IndexingResponse getStopIndexingResponse() {
-        try(ForkJoinPool forkJoinPool = ForkJoinPool.commonPool()) {
+        try{
             siteRepository.findByStatus(IndexingStatus.INDEXING).orElseThrow(
                     () -> new StopIndexingException("Индексация не запущена")
             );
+            ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
             forkJoinPool.shutdownNow();
 
             Optional<Site> optionalSite = siteRepository.findByStatus(IndexingStatus.INDEXING);
